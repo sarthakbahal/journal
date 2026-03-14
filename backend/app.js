@@ -39,6 +39,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'AI-Assisted Journal API',
+    status: 'OK',
+    health: '/health',
+    journalApi: '/api/journal'
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
