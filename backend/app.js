@@ -12,6 +12,7 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowAllOrigins = process.env.CORS_ALLOW_ALL === 'true';
 
 // Rate limiting
 const limiter = rateLimit({
@@ -28,11 +29,22 @@ app.use(limiter);
 // Middleware
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow non-browser or same-origin requests
+    if (!origin) {
       return callback(null, true);
     }
 
-    return callback(new Error('Not allowed by CORS'));
+    // Optional: allow all origins when explicitly enabled
+    if (allowAllOrigins) {
+      return callback(null, true);
+    }
+
+    // Normal allowlist-based CORS
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true
 }));
