@@ -1,12 +1,38 @@
 const mongoose = require('mongoose');
 
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    if (cached.conn) {
+      return cached.conn;
+    }
+
+    if (!process.env.MONGO_URI) {
+      throw new Error('MONGO_URI is not defined');
+    }
+
+    if (!cached.promise) {
+      cached.promise = mongoose.connect(process.env.MONGO_URI)
+        .then((conn) => {
+          console.log(`MongoDB Connected: ${conn.connection.host}`);
+          return conn;
+        })
+        .catch((error) => {
+          cached.promise = null;
+          throw error;
+        });
+    }
+
+    cached.conn = await cached.promise;
+    return cached.conn;
   } catch (error) {
     console.error('Error connecting to MongoDB:', error.message);
-    process.exit(1);
+    throw error;
   }
 };
 
@@ -17,12 +43,6 @@ mongoose.connection.on('disconnected', () => {
 
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
-});
-
-process.on('SIGINT', async () => {
-  await mongoose.connection.close();
-  console.log('MongoDB connection closed due to app termination');
-  process.exit(0);
 });
 
 module.exports = connectDB;
